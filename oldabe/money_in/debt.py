@@ -12,7 +12,7 @@ from ..distribution import Distribution
 from ..models import Payment
 
 
-def write_debts(new_debts, debt_payments):
+def recalculate_debts(new_debts, debt_payments):
     """
     1. Build a hash of all the processed debts, generating an id for each
        (based on email and payment file).
@@ -22,11 +22,10 @@ def write_debts(new_debts, debt_payments):
        hash, otherwise write the input version.
     4. write the debts that remain in the processed hash.
     """
-    print(new_debts, debt_payments)
     total_debt_payments = Tally(
         (dp.debt.key(), dp.amount) for dp in debt_payments
     )
-    replacement = [
+    return [
         (
             dataclasses.replace(
                 debt,
@@ -37,11 +36,14 @@ def write_debts(new_debts, debt_payments):
         )
         for debt in [*DebtsRepo(), *new_debts]
     ]
-    print(total_debt_payments, list(DebtsRepo()), replacement)
 
+
+def write_debts(debts):
+    """ Write the debts to disk, replacing the existing file.
+    """
     with open(DEBTS_FILE, "w") as f:
         writer = csv.writer(f)
-        for debt in replacement:
+        for debt in debts:
             writer.writerow(astuple(debt))
 
 
