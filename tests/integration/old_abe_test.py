@@ -192,6 +192,66 @@ class TestNonAttributablePayment:
             ) in message
 
 
+class TestMultiplePayments:
+
+    # TODO: implement me
+    @time_machine.travel(datetime(1985, 10, 26, 1, 24), tick=False)
+    @patch('oldabe.models.default_commit_hash', return_value='abcd123')
+    def test_generates_transactions(self, mock_git_rev, abe_fs):
+        pass
+
+    @time_machine.travel(datetime(1985, 10, 26, 1, 24), tick=False)
+    @patch('oldabe.models.default_commit_hash', return_value='abcd123')
+    def test_dilutes_attributions(self, mock_git_rev, abe_fs):
+        with localcontext() as context:
+            context.prec = 2
+            amount = 10000
+            abe_fs.create_file(
+                "./abe/payments/1.txt",
+                contents=f"sam,036eaf6,{amount},1987-06-30 06:25:00",
+            )
+            abe_fs.create_file(
+                "./abe/payments/2.txt",
+                contents=f"sam,036eaf6,{amount},1987-06-30 06:24:00",
+            )
+            process_payments_and_record_updates()
+            with open('./abe/attributions.txt') as f:
+                assert f.read() == (
+                    "sid,42\n" "jair,26\n" "ariana,17\n" "sam,16\n"
+                )
+
+    # TODO: why do sam and sri not get into attributions when the amount
+    # is 1000? For higher amounts like 10000 it seems OK
+    # TODO: add a test to check that, even though both sam and sri get
+    # attributed equally, sam gets paid from sri's payment,
+    # but sri doesn't get paid from sam's, assuming sam is first
+    @time_machine.travel(datetime(1985, 10, 26, 1, 24), tick=False)
+    @patch('oldabe.models.default_commit_hash', return_value='abcd123')
+    def test_equal_payment_results_in_equal_share(self, mock_git_rev, abe_fs):
+        with localcontext() as context:
+            context.prec = 2
+            amount = 10000
+            abe_fs.create_file(
+                "./abe/payments/1.txt",
+                contents=f"sam,036eaf6,{amount},1987-06-30 06:25:00",
+            )
+            abe_fs.create_file(
+                "./abe/payments/2.txt",
+                contents=f"sri,b36eaf6,{amount},1987-06-30 06:24:00",
+            )
+            process_payments_and_record_updates()
+            with open('./abe/attributions.txt') as f:
+                assert f.read() == (
+                    "sid,42\n" "jair,26\n" "ariana,17\n" "sam,7.8\n" "sri,7.8\n"
+                )
+
+    # TODO: implement me
+    @time_machine.travel(datetime(1985, 10, 26, 1, 24), tick=False)
+    @patch('oldabe.models.default_commit_hash', return_value='abcd123')
+    def test_compiled_outstanding_balances(self, mock_git_rev, abe_fs):
+        pass
+
+
 class TestUnpayableContributor:
 
     def _call(self, abe_fs):

@@ -137,6 +137,10 @@ def distribute_payment(
     return processed_debts, debt_payments, transactions, advances
 
 
+# TODO: the payments within a commit are not ordered.
+# It may be better to sort them chronologically, so that
+# earlier payments are reflected in attributions before
+# later payments are processed.
 def process_payments(instruments, attributions):
     """
     Process new payments by paying out instruments and then, from the amount
