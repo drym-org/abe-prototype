@@ -30,7 +30,7 @@ from ..repos import (
 from .price import read_price
 from .equity import write_attributions
 from .valuation import read_valuation, write_valuation
-from .debt import pay_outstanding_debts, create_debts, write_debts
+from .debt import pay_outstanding_debts, create_debts, recalculate_debts, write_debts
 from .advances import draw_down_advances, advance_payments
 from .equity import handle_investment
 
@@ -137,6 +137,10 @@ def distribute_payment(
     return processed_debts, debt_payments, transactions, advances
 
 
+# TODO: the payments within a commit are not ordered.
+# It may be better to sort them chronologically, so that
+# earlier payments are reflected in attributions before
+# later payments are processed.
 def process_payments(instruments, attributions):
     """
     Process new payments by paying out instruments and then, from the amount
@@ -199,9 +203,11 @@ def process_payments(instruments, attributions):
             valuation = handle_investment(
                 payment, new_itemized_payments, attributions, price, valuation
             )
+
+    debts = recalculate_debts(new_debts, new_debt_payments)
+
     return (
-        new_debts,
-        new_debt_payments,
+        debts,
         new_transactions,
         valuation,
         new_itemized_payments,
@@ -221,8 +227,7 @@ def process_payments_and_record_updates():
     assert_attributions_normalized(attributions)
 
     (
-        new_debts,
-        debt_payments,
+        debts,
         transactions,
         posterior_valuation,
         new_itemized_payments,
@@ -232,9 +237,9 @@ def process_payments_and_record_updates():
     # we only write the changes to disk at the end
     # so that if any errors are encountered, no
     # changes are made.
-    write_debts(new_debts, debt_payments)
-    TransactionsRepo().extend(transactions)
+    write_debts(debts)
     write_attributions(attributions)
     write_valuation(posterior_valuation)
+    TransactionsRepo().extend(transactions)
     ItemizedPaymentsRepo().extend(new_itemized_payments)
     AdvancesRepo().extend(advances)
